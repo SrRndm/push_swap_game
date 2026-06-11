@@ -1,325 +1,194 @@
-
-<style>
-* { box-sizing: border-box; }
-#app {
-  background: #0e1117;
-  color: #c9d1d9;
-  font-family: var(--font-mono);
-  padding: 1rem;
-  border-radius: var(--border-radius-lg);
-  min-height: 480px;
-}
-#stacks-row {
-  display: flex;
-  gap: 1.25rem;
-  justify-content: flex-start;
-  margin-bottom: 1rem;
-}
-.stack-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.stack-label { font-size: 11px; color: #8b949e; letter-spacing: 0.1em; }
-.stack-well {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-height: 220px;
-  width: 150px;
-  padding: 6px 6px 4px;
-  border: 0.5px solid #30363d;
-  border-radius: var(--border-radius-md);
-  background: #161b22;
-  justify-content: flex-start;
-}
-.empty-hint { font-size: 11px; color: #484f58; margin: auto; }
-.bar {
-  border-radius: 4px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 500;
-  transition: width 0.15s ease;
-  color: #0e1117;
-}
-.bar.is-top { outline: 2px solid #58a6ff; outline-offset: 1px; }
-.bar.is-sorted { background: #1D9E75 !important; color: #E1F5EE !important; }
-#divider { border: none; border-top: 0.5px solid #21262d; margin: 0 0 0.75rem; }
-#log-area {
-  min-height: 40px;
-  max-height: 40px;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  align-content: flex-start;
-  margin-bottom: 0.75rem;
-}
-.log-chip {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: #21262d;
-  color: #8b949e;
-  border: 0.5px solid #30363d;
-}
-.log-chip.fresh { background: #0d2744; color: #58a6ff; border-color: #1f4b7a; }
-.log-chip.err { background: #2d0f0f; color: #f85149; border-color: #5c1a1a; }
-#terminal {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #161b22;
-  border: 0.5px solid #30363d;
-  border-radius: var(--border-radius-md);
-  padding: 7px 10px;
-  margin-bottom: 0.75rem;
-  width: 50%;
-}
-#prompt { color: #3fb950; font-size: 13px; white-space: nowrap; }
-#cmd-input {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #e6edf3;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  flex: 1;
-  min-width: 0;
-  caret-color: #58a6ff;
-}
-#hint-row {
-  display: grid;
-  grid-template-columns: repeat(6, auto);
-  gap: 5px;
-  justify-content: start;
-  margin-bottom: 0.75rem;
-}
-.hint-key {
-  font-size: 11px;
-  padding: 4px 9px;
-  border-radius: 4px;
-  background: #21262d;
-  color: #8b949e;
-  border: 0.5px solid #30363d;
-  cursor: pointer;
-  transition: background 0.1s;
-  text-align: center;
-}
-.hint-key:hover { background: #30363d; color: #c9d1d9; }
-#bottom-row {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-start;
-  align-items: center;
-  margin-top: 0.25rem;
-}
-.ops-label { font-size: 13px; color: #8b949e; }
-.ops-label span { color: #e6edf3; font-weight: 500; }
-.ctrl-btn {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 4px 11px;
-  border-radius: var(--border-radius-md);
-  border: 0.5px solid #30363d;
-  background: transparent;
-  color: #8b949e;
-  cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-}
-.ctrl-btn:hover { background: #21262d; color: #e6edf3; }
-#win-banner {
-  display: none;
-  font-size: 13px;
-  font-weight: 500;
-  color: #3fb950;
-  padding: 5px 10px;
-  background: #0d2816;
-  border: 0.5px solid #1a4a2a;
-  border-radius: var(--border-radius-md);
-  margin-bottom: 0.75rem;
-}
-#status-line { font-size: 12px; color: #8b949e; min-height: 16px; margin-bottom: 0.5rem; }
-</style>
-
-<!-- push_swap terminal game -->
-<div id="app">
-
-  <div id="win-banner"></div>
-  <div id="status-line"></div>
-
-  <div id="stacks-row">
-    <div class="stack-col">
-      <div class="stack-label">A</div>
-      <div class="stack-well" id="well-a"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>push_swap</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0e1117; --surface: #161b22; --border: #30363d;
+      --muted:   #8b949e; --text: #e6edf3;
+      --blue:    #58a6ff; --green: #3fb950; --red: #f85149;
+    }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      height: 100%; overscroll-behavior: none;
+    }
+    #shell { display: flex; flex-direction: column; min-height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    #navbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 0.5px solid var(--border);
+      background: var(--bg); position: sticky; top: 0; z-index: 10;
+    }
+    .brand { font-size: 13px; color: var(--blue); letter-spacing: 0.08em; }
+    .nav-ops { font-size: 13px; color: var(--muted); }
+    .nav-ops span { color: var(--text); font-weight: 600; }
+    #body { flex: 1; overflow-y: auto; padding: 12px 12px 0; }
+    #win-banner {
+      display: none; background: #0d2816; border: 0.5px solid #1a4a2a;
+      border-radius: 8px; padding: 8px 12px; font-size: 13px;
+      color: var(--green); font-weight: 600; margin-bottom: 10px;
+    }
+    #status-line { min-height: 18px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    #stacks-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .stack-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+    .stack-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+    .stack-well {
+      width: 100%; min-height: 200px; background: var(--surface);
+      border: 0.5px solid var(--border); border-radius: 8px;
+      padding: 6px; display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+    }
+    .empty-hint { font-size: 11px; color: #484f58; margin: auto; }
+    .bar {
+      border-radius: 4px; height: 26px; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; transition: width 0.12s ease;
+    }
+    .bar.is-top    { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .bar.is-sorted { background: #1D9E75 !important; color: #E1F5EE !important; }
+    .divider { border: none; border-top: 0.5px solid var(--border); margin: 0 0 10px; }
+    #log-area {
+      min-height: 36px; max-height: 36px; overflow: hidden;
+      display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; margin-bottom: 10px;
+    }
+    .chip       { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #21262d; color: var(--muted); border: 0.5px solid var(--border); }
+    .chip.fresh { background: #0d2744; color: var(--blue); border-color: #1f4b7a; }
+    .chip.err   { background: #2d0f0f; color: var(--red);  border-color: #5c1a1a; }
+    #terminal {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; width: 55%;
+    }
+    #prompt { color: var(--green); font-size: 14px; white-space: nowrap; }
+    #cmd-input {
+      background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'Courier New', monospace;
+      font-size: 14px; flex: 1; min-width: 0; caret-color: var(--blue);
+    }
+    #bottom-panel {
+      position: sticky; bottom: 0; background: var(--bg);
+      border-top: 0.5px solid var(--border);
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    }
+    #hint-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 7px; margin-bottom: 10px;
+    }
+    .op-btn {
+      font-family: 'Courier New', monospace; font-size: 13px; font-weight: 500;
+      height: 46px; border-radius: 8px; background: #21262d; color: var(--muted);
+      border: 0.5px solid var(--border); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-user-select: none; user-select: none; touch-action: manipulation;
+      transition: background 0.08s, transform 0.08s;
+    }
+    .op-btn:active { background: #2d333b; color: var(--text); transform: scale(0.93); }
+    #new-row { display: flex; gap: 8px; align-items: center; }
+    .ops-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+    .ops-label span { color: var(--text); font-weight: 600; }
+    .new-btn {
+      font-family: 'Courier New', monospace; font-size: 12px;
+      height: 38px; padding: 0 13px; border-radius: 8px;
+      background: transparent; color: var(--muted); border: 0.5px solid var(--border);
+      cursor: pointer; touch-action: manipulation; transition: background 0.08s;
+    }
+    .new-btn:active { background: #21262d; color: var(--text); }
+  </style>
+</head>
+<body>
+<div id="shell">
+  <div id="navbar">
+    <span class="brand">push_swap</span>
+    <span class="nav-ops">ops: <span id="op-count">0</span></span>
+  </div>
+  <div id="body">
+    <div id="win-banner"></div>
+    <div id="status-line"></div>
+    <div id="stacks-row">
+      <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"></div></div>
+      <div class="stack-col"><div class="stack-label">B</div><div class="stack-well" id="well-b"></div></div>
     </div>
-    <div class="stack-col">
-      <div class="stack-label">B</div>
-      <div class="stack-well" id="well-b"></div>
+    <hr class="divider">
+    <div id="log-area"></div>
+    <div id="terminal">
+      <span id="prompt">$&gt;</span>
+      <input id="cmd-input" type="text" autocomplete="off" autocorrect="off"
+        autocapitalize="none" spellcheck="false" placeholder="op + enter" inputmode="text">
     </div>
   </div>
-
-  <hr id="divider">
-  <div id="log-area"></div>
-
-  <div id="terminal">
-    <span id="prompt">$&gt;</span>
-    <input id="cmd-input" type="text" autocomplete="off" spellcheck="false" placeholder="op + enter" aria-label="command input">
-  </div>
-
-  <!-- row 1: sa sb ss pa pb -->
-  <!-- row 2: ra rb rr rra rrb -->
-  <div id="hint-row">
-    <span class="hint-key" onclick="typeOp('sa')">sa</span>
-    <span class="hint-key" onclick="typeOp('sb')">sb</span>
-    <span class="hint-key" onclick="typeOp('ss')">ss</span>
-    <span class="hint-key" onclick="typeOp('pa')">pa</span>
-    <span class="hint-key" onclick="typeOp('pb')">pb</span>
-    <span style="visibility:hidden" class="hint-key"></span>
-    <span class="hint-key" onclick="typeOp('ra')">ra</span>
-    <span class="hint-key" onclick="typeOp('rb')">rb</span>
-    <span class="hint-key" onclick="typeOp('rr')">rr</span>
-    <span class="hint-key" onclick="typeOp('rra')">rra</span>
-    <span class="hint-key" onclick="typeOp('rrb')">rrb</span>
-  </div>
-
-  <div id="bottom-row">
-    <div class="ops-label">ops: <span id="op-count">0</span></div>
-    <button class="ctrl-btn" onclick="newGame(5)">new 5</button>
-    <button class="ctrl-btn" onclick="newGame(7)">new 7</button>
-    <button class="ctrl-btn" onclick="newGame(10)">new 10</button>
+  <div id="bottom-panel">
+    <div id="hint-grid">
+      <div class="op-btn" ontouchstart="" onclick="tapOp('sa')">sa</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('sb')">sb</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('ss')">ss</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('pa')">pa</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('pb')">pb</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('ra')">ra</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('rb')">rb</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('rr')">rr</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('rra')">rra</div>
+      <div class="op-btn" ontouchstart="" onclick="tapOp('rrb')">rrb</div>
+    </div>
+    <div id="new-row">
+      <span class="ops-label">ops: <span id="op-count2">0</span></span>
+      <button class="new-btn" ontouchstart="" onclick="newGame(5)">new 5</button>
+      <button class="new-btn" ontouchstart="" onclick="newGame(7)">new 7</button>
+      <button class="new-btn" ontouchstart="" onclick="newGame(10)">new 10</button>
+    </div>
   </div>
 </div>
-
 <script>
-let A=[], B=[], opCount=0, history=[], won=false;
-let audioCtx=null;
-
-const BAR_COLORS = [
+let A=[],B=[],opCount=0,history=[],won=false,audioCtx=null;
+const BAR_COLORS=[
   ['#7F77DD','#EEEDFE'],['#1D9E75','#E1F5EE'],['#D85A30','#FAECE7'],
   ['#378ADD','#E6F1FB'],['#BA7517','#FAEEDA'],['#D4537E','#FBEAF0'],
   ['#639922','#EAF3DE'],['#888780','#F1EFE8'],
 ];
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beepError(){try{const c=getAudio(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='square';o.frequency.setValueAtTime(180,c.currentTime);o.frequency.exponentialRampToValueAtTime(80,c.currentTime+0.18);g.gain.setValueAtTime(0.18,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.18);o.start();o.stop(c.currentTime+0.18);}catch(e){}}
+function beepOk(){try{const c=getAudio(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.value=660;g.gain.setValueAtTime(0.07,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.06);o.start();o.stop(c.currentTime+0.06);}catch(e){}}
+function beepWin(){try{const c=getAudio();[523,659,784,1047].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.value=f;const t=c.currentTime+i*0.12;g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.start(t);o.stop(t+0.2);});}catch(e){}}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+function isSorted(a){for(let i=1;i<a.length;i++)if(a[i-1]>a[i])return false;return true;}
+function setOps(n){document.getElementById('op-count').textContent=n;document.getElementById('op-count2').textContent=n;}
+function setStatus(m,e){const el=document.getElementById('status-line');el.textContent=m;el.style.color=e?'#f85149':'#8b949e';}
+function addLog(op,e){const a=document.getElementById('log-area'),old=a.querySelector('.fresh');if(old)old.classList.remove('fresh');const c=document.createElement('span');c.className='chip'+(e?' err':' fresh');c.textContent=op;a.appendChild(c);}
 
-function getAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
-}
-function beepError() {
-  try {
-    const ctx=getAudio(), osc=ctx.createOscillator(), g=ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.type='square';
-    osc.frequency.setValueAtTime(180,ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(80,ctx.currentTime+0.18);
-    g.gain.setValueAtTime(0.18,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.18);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.18);
-  } catch(e){}
-}
-function beepOk() {
-  try {
-    const ctx=getAudio(), osc=ctx.createOscillator(), g=ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.type='sine'; osc.frequency.value=600;
-    g.gain.setValueAtTime(0.08,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.07);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.07);
-  } catch(e){}
-}
-function beepWin() {
-  try {
-    const ctx=getAudio();
-    [523,659,784,1047].forEach((f,i)=>{
-      const osc=ctx.createOscillator(), g=ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.type='sine'; osc.frequency.value=f;
-      const t=ctx.currentTime+i*0.12;
-      g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
-      osc.start(t); osc.stop(t+0.2);
-    });
-  } catch(e){}
-}
-
-function isSorted(arr) {
-  for(let i=1;i<arr.length;i++) if(arr[i-1]>arr[i]) return false;
-  return true;
-}
-
-function newGame(n) {
-  const vals=Array.from({length:n},(_,i)=>i+1);
-  do {
-    for(let i=vals.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [vals[i],vals[j]]=[vals[j],vals[i]];
-    }
-  } while(isSorted(vals));
-  A=[...vals]; B=[]; opCount=0; history=[]; won=false;
+function newGame(n){
+  const v=Array.from({length:n},(_,i)=>i+1);
+  do{for(let i=v.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[v[i],v[j]]=[v[j],v[i]];}}while(isSorted(v));
+  A=[...v];B=[];opCount=0;history=[];won=false;
   document.getElementById('win-banner').style.display='none';
   document.getElementById('log-area').innerHTML='';
-  document.getElementById('op-count').textContent='0';
-  setStatus('');
-  render();
-  focusInput();
+  setOps(0);setStatus('');render();
 }
 
-function renderWell(id, stack, total, allSorted) {
-  const well=document.getElementById(id);
-  well.innerHTML='';
-  if(stack.length===0){
-    const h=document.createElement('div');
-    h.className='empty-hint'; h.textContent='empty';
-    well.appendChild(h); return;
-  }
+function renderWell(id,stack,total,sorted){
+  const w=document.getElementById(id);w.innerHTML='';
+  if(!stack.length){const h=document.createElement('div');h.className='empty-hint';h.textContent='empty';w.appendChild(h);return;}
   stack.forEach((val,idx)=>{
     const bar=document.createElement('div');
-    const sorted=allSorted&&id==='well-a';
-    bar.className='bar'+(idx===0?' is-top':'')+(sorted?' is-sorted':'');
-    if(!sorted){
-      const [bg,fg]=BAR_COLORS[(val-1)%BAR_COLORS.length];
-      bar.style.background=bg; bar.style.color=fg;
-    }
-    bar.style.width=Math.round(22+(val/total)*108)+'px';
-    bar.textContent=val;
-    well.appendChild(bar);
+    const s=sorted&&id==='well-a';
+    bar.className='bar'+(idx===0?' is-top':'')+(s?' is-sorted':'');
+    if(!s){const[bg,fg]=BAR_COLORS[(val-1)%BAR_COLORS.length];bar.style.background=bg;bar.style.color=fg;}
+    bar.style.width=Math.round(22+(val/total)*((w.offsetWidth||140)-32))+'px';
+    bar.textContent=val;w.appendChild(bar);
   });
 }
 
-function render() {
-  const total=A.length+B.length;
-  const sorted=B.length===0&&A.length>0&&isSorted(A);
-  renderWell('well-a',A,total,sorted);
-  renderWell('well-b',B,total,false);
-  document.getElementById('op-count').textContent=opCount;
-  if(sorted&&!won){
-    won=true;
-    const b=document.getElementById('win-banner');
-    b.style.display='block';
-    b.textContent='sorted in '+opCount+' op'+(opCount===1?'':'s')+'!';
-    beepWin();
-  }
+function render(){
+  const total=A.length+B.length,sorted=B.length===0&&A.length>0&&isSorted(A);
+  renderWell('well-a',A,total,sorted);renderWell('well-b',B,total,false);setOps(opCount);
+  if(sorted&&!won){won=true;const b=document.getElementById('win-banner');b.style.display='block';b.textContent='sorted in '+opCount+' op'+(opCount===1?'':'s')+'!';beepWin();vibe([60,40,60,40,100]);}
 }
 
-function setStatus(msg,isErr) {
-  const el=document.getElementById('status-line');
-  el.textContent=msg;
-  el.style.color=isErr?'#f85149':'#8b949e';
-}
-
-function addLog(op,isErr) {
-  const area=document.getElementById('log-area');
-  const old=area.querySelector('.fresh');
-  if(old) old.classList.remove('fresh');
-  const chip=document.createElement('span');
-  chip.className='log-chip'+(isErr?' err':' fresh');
-  chip.textContent=op;
-  area.appendChild(chip);
-}
-
-function execOp(op) {
-  if(won) return;
-  const snap={A:[...A],B:[...B]};
-  let ok=true, msg='';
+function execOp(op){
+  if(won)return;
+  const snap={A:[...A],B:[...B]};let ok=true,msg='';
   if(op==='sa'){if(A.length>=2){[A[0],A[1]]=[A[1],A[0]];}else{ok=false;msg='sa: need ≥2 in A';}}
   else if(op==='sb'){if(B.length>=2){[B[0],B[1]]=[B[1],B[0]];}else{ok=false;msg='sb: need ≥2 in B';}}
   else if(op==='ss'){if(A.length>=2)[A[0],A[1]]=[A[1],A[0]];if(B.length>=2)[B[0],B[1]]=[B[1],B[0]];}
@@ -331,55 +200,27 @@ function execOp(op) {
   else if(op==='rra'){if(A.length>1){A.unshift(A.pop());}else{ok=false;msg='rra: need ≥2 in A';}}
   else if(op==='rrb'){if(B.length>1){B.unshift(B.pop());}else{ok=false;msg='rrb: need ≥2 in B';}}
   else{ok=false;msg='unknown: '+op;}
-
-  if(!ok){beepError();addLog(op,true);setStatus(msg,true);return;}
-  history.push(snap);
-  opCount++;
-  beepOk();
-  addLog(op,false);
-  setStatus('');
-  render();
+  if(!ok){beepError();vibe(80);addLog(op,true);setStatus(msg,true);return;}
+  history.push(snap);opCount++;beepOk();addLog(op,false);setStatus('');render();
 }
 
-function undoOp() {
-  if(history.length===0){beepError();setStatus('nothing to undo',true);return;}
-  const snap=history.pop();
-  A=snap.A; B=snap.B; opCount--;
-  won=false;
+function undoOp(){
+  if(!history.length){beepError();setStatus('nothing to undo',true);return;}
+  const s=history.pop();A=s.A;B=s.B;opCount--;won=false;
   document.getElementById('win-banner').style.display='none';
-  const chips=document.getElementById('log-area').querySelectorAll('.log-chip');
-  if(chips.length>0) chips[chips.length-1].remove();
-  setStatus('');
-  render();
-  focusInput();
+  const chips=document.getElementById('log-area').querySelectorAll('.chip');
+  if(chips.length)chips[chips.length-1].remove();
+  setStatus('');render();
 }
 
-function typeOp(op) { execOp(op); focusInput(); }
-
-function submitInput() {
-  const inp=document.getElementById('cmd-input');
-  const val=inp.value.trim().toLowerCase();
-  inp.value='';
-  if(!val) return;
-  if(val==='undo'){undoOp();return;}
-  if(val.startsWith('new ')){const n=parseInt(val.split(' ')[1]);if(n>=3&&n<=15){newGame(n);return;}}
-  execOp(val);
-}
-
-function focusInput() { document.getElementById('cmd-input').focus(); }
+function tapOp(op){execOp(op);}
 
 document.getElementById('cmd-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();submitInput();}
-  if(e.key==='ArrowUp'){
-    e.preventDefault();
-    const chips=document.getElementById('log-area').querySelectorAll('.log-chip:not(.err)');
-    if(chips.length>0) document.getElementById('cmd-input').value=chips[chips.length-1].textContent;
-  }
-});
-
-document.getElementById('app').addEventListener('click', e => {
-  if(!e.target.classList.contains('hint-key')&&!e.target.classList.contains('ctrl-btn')) focusInput();
+  if(e.key==='Enter'){e.preventDefault();const inp=e.target,v=inp.value.trim().toLowerCase();inp.value='';if(!v)return;if(v==='undo'){undoOp();return;}if(v.startsWith('new ')){const n=parseInt(v.split(' ')[1]);if(n>=3&&n<=15){newGame(n);return;}}execOp(v);}
+  if(e.key==='ArrowUp'){e.preventDefault();const chips=document.getElementById('log-area').querySelectorAll('.chip:not(.err)');if(chips.length)e.target.value=chips[chips.length-1].textContent;}
 });
 
 newGame(5);
 </script>
+</body>
+</html>
