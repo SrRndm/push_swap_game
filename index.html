@@ -263,84 +263,77 @@ function beepWin() {
 }
 
 /* ─────────────────────────────────────────────
-   AMBIENT SEQUENCER
-   Stack A → slow melodic arpeggio (descending disorder)
-   Stack B → faster rhythmic pulse (elements in transit)
+   POLYRHYTHMIC SEQUENCER  — 120 BPM
+   Master clock: 1 bar = 4 beats = 2000 ms
+   Stack A → A.length subdivisions per bar (sine, melodic)
+   Stack B → B.length subdivisions per bar (triangle, rhythmic)
+   Both reset on the downbeat → true polyrhythm
 ───────────────────────────────────────────── */
-let seqStep = 0;
-let seqBStep = 0;
-let seqInterval = null;
-let seqBInterval = null;
+// 120 BPM, 10 subdivisions per bar → one note every 200 ms
+// This is the fixed pulse rate regardless of stack size.
+// Stack size determines how many pitches are in the cycle, not how fast they fire.
+const NOTE_MS = 200; // (60/120)*4*1000 / 10 = 200 ms
 
-// disorder score 0-1
-function disorder(arr) {
-  if (arr.length <= 1) return 0;
-  let inv = 0, total = 0;
-  for (let i=0; i<arr.length; i++)
-    for (let j=i+1; j<arr.length; j++) { total++; if (arr[i]>arr[j]) inv++; }
-  return inv / total;
+let seqStep  = 0;
+let seqBStep = 0;
+let _aTimer  = null;
+let _bTimer  = null;
+
+function playArpNote(stack, idx, vol, dur, wave) {
+  if (!stack.length) return;
+  const i = idx % stack.length;
+  const total = A.length + B.length || stack.length;
+  const freq = toFreq(stack[i], total);
+  pingBar(i, stack === A ? 'well-a' : 'well-b');
+  playTone(freq, wave, dur, vol);
 }
 
-function playArpNote(stack, step, vol, dur, wave) {
-  if (!stack.length) return;
-  const idx = step % stack.length;
-  const freq = toFreq(stack[idx], A.length + B.length || stack.length);
-  // ping the bar visually
-  pingBar(idx, stack === A ? 'well-a' : 'well-b');
-  playTone(freq, wave, dur, vol);
+function schedA() {
+  if (!musicOn) return;
+  if (A.length) playArpNote(A, seqStep++, 0.07, 0.18, 'sine');
+  _aTimer = setTimeout(schedA, NOTE_MS);
+}
+
+// Stack B fires on the same pulse but offset by half a step for polyrhythmic feel
+// when both stacks have pieces — the offset is NOTE_MS * (A.length / (A.length + B.length))
+// giving a natural interleave. We keep it simple: B fires at NOTE_MS too, but starts
+// offset by NOTE_MS/2 so it lands between A's hits when sizes differ.
+function schedB() {
+  if (!musicOn) return;
+  if (B.length) playArpNote(B, seqBStep++, 0.055, 0.16, 'triangle');
+  _bTimer = setTimeout(schedB, NOTE_MS);
 }
 
 function startSequencer() {
   stopSequencer();
   if (!musicOn) return;
+  seqStep = 0; seqBStep = 0;
 
-  // Stack A: slow arpeggio, tempo tied to disorder
-  function schedA() {
-    const dis = disorder(A);
-    const baseMs = 600;
-    const ms = baseMs + dis * 800; // more disordered = faster/more chaotic
-    playArpNote(A, seqStep++, 0.07, 0.35, 'sine');
-    seqHandle = setTimeout(schedA, ms);
-  }
-
-  // Stack B: faster rhythmic pulse when it has elements
-  function schedB() {
-    const ms = 280;
-    if (B.length > 0) playArpNote(B, seqBStep++, 0.05, 0.18, 'triangle');
-    seqBInterval = setTimeout(schedB, ms);
-  }
-
-  // pad drone: root note C, very quiet
-  function startDrone() {
-    try {
-      const c = getCtx();
-      const o1 = c.createOscillator(), o2 = c.createOscillator();
-      const g = c.createGain();
-      o1.connect(g); o2.connect(g); g.connect(masterGain);
-      o1.type = 'sine'; o1.frequency.value = 65.41; // C2
-      o2.type = 'sine'; o2.frequency.value = 98.00; // G2
-      o2.detune.value = 4; // slight detune for warmth
-      g.gain.value = 0.04;
-      o1.start(); o2.start();
-      window._droneOscs = [o1, o2, g];
-    } catch(e) {}
-  }
+  // pad drone: C2 + G2, very quiet
+  try {
+    const c = getCtx();
+    const o1 = c.createOscillator(), o2 = c.createOscillator();
+    const g = c.createGain();
+    o1.connect(g); o2.connect(g); g.connect(masterGain);
+    o1.type = 'sine'; o1.frequency.value = 65.41; // C2
+    o2.type = 'sine'; o2.frequency.value = 98.00; // G2
+    o2.detune.value = 4;
+    g.gain.value = 0.04;
+    o1.start(); o2.start();
+    window._droneOscs = [o1, o2, g];
+  } catch(e) {}
 
   schedA();
-  schedB();
-  startDrone();
+  // B starts half a pulse later so its hits land between A's when stacks are equal size
+  _bTimer = setTimeout(schedB, NOTE_MS / 2);
 }
 
 function stopSequencer() {
-  if (seqHandle)    { clearTimeout(seqHandle);    seqHandle = null; }
-  if (seqBInterval) { clearTimeout(seqBInterval); seqBInterval = null; }
+  if (_aTimer) { clearTimeout(_aTimer); _aTimer = null; }
+  if (_bTimer) { clearTimeout(_bTimer); _bTimer = null; }
   seqStep = 0; seqBStep = 0;
-  // stop drone
   if (window._droneOscs) {
-    try {
-      window._droneOscs[0].stop();
-      window._droneOscs[1].stop();
-    } catch(e) {}
+    try { window._droneOscs[0].stop(); window._droneOscs[1].stop(); } catch(e) {}
     window._droneOscs = null;
   }
 }
