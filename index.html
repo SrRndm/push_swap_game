@@ -121,10 +121,12 @@
   <div id="navbar">
     <span class="brand">push_swap</span>
     <button id="music-btn" onclick="toggleMusic()">♪ off</button>
-    <span class="nav-ops">ops: <span id="op-count">0</span></span>
+    <span class="nav-ops">ops: <span id="op-count">0</span><span id="ops-limit-badge" style="color:var(--muted)"></span></span>
+    <span class="nav-ops" id="timer-badge" style="display:none">⏱ <span id="timer-display">0:00</span></span>
   </div>
   <div id="body">
     <div id="win-banner"></div>
+    <div id="lose-banner" style="display:none;background:#2d0f0f;border:0.5px solid #5c1a1a;border-radius:8px;padding:8px 12px;font-size:13px;color:#f85149;font-weight:600;margin-bottom:10px;"></div>
     <div id="status-line"></div>
     <div id="stacks-row">
       <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"></div></div>
@@ -164,7 +166,65 @@
 /* ─────────────────────────────────────────────
    GAME STATE
 ───────────────────────────────────────────── */
-let A=[], B=[], opCount=0, history=[], won=false;
+let A=[], B=[], opCount=0, history=[], won=false, lost=false;
+
+// Limits per puzzle size
+// Optimal solutions: 5≈12, 7≈20, 10≈35 — limits give ~60% headroom
+const LIMITS = {
+  5:  { ops: 20,  secs: 135 },
+  7:  { ops: 35,  secs: 225 },
+  10: { ops: 60,  secs: 360 },
+};
+let currentN = 5;
+let opsLimit  = LIMITS[5].ops;
+let timeLimit = LIMITS[5].secs;
+let timeLeft  = 0;
+let timerInterval = null;
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = timeLimit;
+  updateTimerDisplay();
+  document.getElementById('timer-badge').style.display = '';
+  timerInterval = setInterval(() => {
+    if (won || lost) { clearInterval(timerInterval); return; }
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) triggerLose("time's up");
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('timer-badge').style.display = 'none';
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(Math.abs(timeLeft) / 60);
+  const s = Math.abs(timeLeft) % 60;
+  const el = document.getElementById('timer-display');
+  el.textContent = m + ':' + String(s).padStart(2,'0');
+  el.style.color = timeLeft <= 20 ? 'var(--red)' : timeLeft <= 45 ? '#ffd700' : 'var(--text)';
+}
+
+function triggerLose(reason) {
+  lost = true;
+  clearInterval(timerInterval);
+  stopSequencer();
+  beepError(); vibe([80,50,80,50,80]);
+  const b = document.getElementById('lose-banner');
+  b.style.display = 'block';
+  b.textContent = '\u2717 ' + reason + ' \u2014 try again';
+}
+
+function updateOpsDisplay() {
+  document.getElementById('op-count').textContent = opCount;
+  document.getElementById('op-count2').textContent = opCount;
+  const badge = document.getElementById('ops-limit-badge');
+  const remaining = opsLimit - opCount;
+  badge.textContent = '/' + opsLimit;
+  badge.style.color = remaining <= 5 ? 'var(--red)' : remaining <= 10 ? '#ffd700' : 'var(--muted)';
+}
 
 const BAR_COLORS=[
   ['#7F77DD','#EEEDFE'],['#1D9E75','#E1F5EE'],['#D85A30','#FAECE7'],
@@ -189,6 +249,13 @@ function getCtx() {
     masterGain = ctx.createGain();
     masterGain.gain.value = 0.5;
     masterGain.connect(ctx.destination);
+    // Delay/echo chain for sequencer notes: dotted-8th at 120 BPM = 375ms
+    const dl = ctx.createDelay(1.0);
+    dl.delayTime.value = 0.375;
+    const dfb = ctx.createGain(); dfb.gain.value = 0.38; // feedback
+    const dwet = ctx.createGain(); dwet.gain.value = 0.32; // wet level
+    dl.connect(dfb); dfb.connect(dl); dl.connect(dwet); dwet.connect(masterGain);
+    ctx._delayWet = dwet; ctx._delayIn = dl;
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
@@ -198,6 +265,23 @@ function getCtx() {
 function toFreq(val, stackSize) {
   const idx = Math.min(Math.round((val - 1) / Math.max(stackSize - 1, 1) * (PENTA.length - 1)), PENTA.length - 1);
   return PENTA[idx];
+}
+
+/* sequencer tone — routed through delay send */
+function playSeqTone(freq, type='sine', dur=0.18, vol=0.07, detune=0) {
+  try {
+    const c = getCtx();
+    const o = c.createOscillator(), g = c.createGain();
+    o.connect(g);
+    g.connect(masterGain);       // dry
+    if (c._delayIn) g.connect(c._delayIn); // wet send
+    o.type = type;
+    o.frequency.value = freq;
+    if (detune) o.detune.value = detune;
+    g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+    o.start(); o.stop(c.currentTime + dur);
+  } catch(e) {}
 }
 
 /* short pitched tone for op feedback */
@@ -285,7 +369,7 @@ function playArpNote(stack, idx, vol, dur, wave) {
   const total = A.length + B.length || stack.length;
   const freq = toFreq(stack[i], total);
   pingBar(i, stack === A ? 'well-a' : 'well-b');
-  playTone(freq, wave, dur, vol);
+  playSeqTone(freq, wave, dur, vol);
 }
 
 function schedA() {
@@ -371,8 +455,8 @@ function isSorted(a) {
 }
 function vibe(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch(e) {} }
 function setOps(n) {
-  document.getElementById('op-count').textContent = n;
-  document.getElementById('op-count2').textContent = n;
+  opCount = n;
+  updateOpsDisplay();
 }
 function setStatus(m, e) {
   const el = document.getElementById('status-line');
@@ -397,13 +481,17 @@ function newGame(n) {
       [v[i],v[j]] = [v[j],v[i]];
     }
   } while (isSorted(v));
-  A=[...v]; B=[]; opCount=0; history=[]; won=false;
+  currentN = n;
+  const lim = LIMITS[n] || { ops: Math.round(n * 6), secs: n * 24 };
+  opsLimit = lim.ops; timeLimit = lim.secs;
+  A=[...v]; B=[]; opCount=0; history=[]; won=false; lost=false;
   document.getElementById('win-banner').style.display = 'none';
+  document.getElementById('lose-banner').style.display = 'none';
   document.getElementById('log-area').innerHTML = '';
   setOps(0); setStatus('');
   seqStep=0; seqBStep=0;
   render();
-  // restart sequencer to re-sync with new stack
+  startTimer();
   if (musicOn) startSequencer();
 }
 
@@ -438,11 +526,16 @@ function render() {
   if (sorted && !won) {
     won = true;
     stopSequencer();
+    stopTimer();
     beepWin();
     vibe([60,40,60,40,120]);
     const b = document.getElementById('win-banner');
     b.style.display = 'block';
-    b.textContent = 'sorted in ' + opCount + ' op' + (opCount===1?'':'s') + '!';
+    const timeUsed = timeLimit - timeLeft;
+    const tm = Math.floor(timeUsed/60), ts = timeUsed%60;
+    const timeStr = tm > 0 ? tm+'m '+ts+'s' : ts+'s';
+    const pct = Math.round((opCount / opsLimit) * 100);
+    b.textContent = '\u2713 sorted! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 efficiency ' + (100-pct) + '%';
     // triumphant win arpeggio from sorted stack after short delay
     setTimeout(() => {
       if (!musicOn) return;
@@ -457,7 +550,7 @@ function render() {
 }
 
 function execOp(op) {
-  if (won) return;
+  if (won || lost) return;
   const snap = {A:[...A], B:[...B]};
   let ok=true, msg='';
   if      (op==='sa') { if(A.length>=2){[A[0],A[1]]=[A[1],A[0]];}else{ok=false;msg='sa: need ≥2 in A';} }
@@ -482,14 +575,16 @@ function execOp(op) {
   beepOp(op);
   addLog(op, false); setStatus('');
   render();
+  if (!won && opCount >= opsLimit) triggerLose('ops limit reached');
 }
 
 function undoOp() {
   if (!history.length) { beepError(); setStatus('nothing to undo', true); return; }
   const s = history.pop();
   A=s.A; B=s.B; opCount--;
-  won=false;
+  won=false; lost=false;
   document.getElementById('win-banner').style.display='none';
+  document.getElementById('lose-banner').style.display='none';
   const chips = document.getElementById('log-area').querySelectorAll('.chip');
   if (chips.length) chips[chips.length-1].remove();
   setStatus(''); render();
