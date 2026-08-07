@@ -133,9 +133,64 @@
       cursor: pointer; touch-action: manipulation; transition: background 0.08s;
     }
     .new-btn:active { background: #21262d; color: var(--text); }
+    .new-btn.locked { opacity: 0.35; pointer-events: none; }
+    .new-btn.highlight { border-color: var(--green); color: var(--green); }
+
+    /* ── Intro overlay ── */
+    #intro-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(14,17,23,0.96);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #intro-box {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 12px; padding: 24px 20px; max-width: 380px; width: 100%;
+    }
+    #intro-box h1 { font-size: 18px; color: var(--blue); letter-spacing: 0.08em; margin-bottom: 4px; }
+    #intro-box .sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+    #intro-box h2 { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; margin: 12px 0 6px; }
+    #intro-box p  { font-size: 12px; color: var(--text); line-height: 1.6; margin-bottom: 6px; }
+    #intro-box .ops-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 10px; }
+    #intro-box .ops-table td { padding: 3px 6px; border: 0.5px solid var(--border); color: var(--muted); }
+    #intro-box .ops-table td:first-child { color: var(--blue); font-weight: 600; }
+    #intro-box .start-btn {
+      width: 100%; margin-top: 16px; font-family: 'Courier New', monospace;
+      font-size: 14px; font-weight: 600; padding: 12px;
+      border-radius: 8px; background: #0d2816; color: var(--green);
+      border: 0.5px solid var(--green); cursor: pointer; letter-spacing: 0.06em;
+      transition: background 0.1s;
+    }
+    #intro-box .start-btn:active { background: #143d22; }
   </style>
 </head>
 <body>
+<div id="intro-overlay">
+  <div id="intro-box">
+    <h1>push_swap</h1>
+    <p class="sub">a sorting puzzle · touch &amp; keyboard</p>
+
+    <h2>GOAL</h2>
+    <p>Sort stack <b style="color:var(--blue)">A</b> in ascending order (smallest on top) using stack <b style="color:var(--blue)">B</b> as workspace. All pieces must be in A when done.</p>
+
+    <h2>OPERATIONS</h2>
+    <table class="ops-table">
+      <tr><td>sa / sb / ss</td><td>swap top 2 of A / B / both</td></tr>
+      <tr><td>pa / pb</td><td>push top of B→A / A→B</td></tr>
+      <tr><td>ra / rb / rr</td><td>rotate A / B / both up</td></tr>
+      <tr><td>rra / rrb</td><td>reverse rotate A / B down</td></tr>
+    </table>
+
+    <h2>MODES</h2>
+    <p><b style="color:var(--green)">Practice</b> — 5 pieces, no limits. Learn the ops freely.</p>
+    <p><b style="color:var(--blue)">Play</b> — 7 pieces, time &amp; move limits. Beat it to unlock Level 2 (10 pieces).</p>
+
+    <h2>TIPS</h2>
+    <p>Tap buttons or type ops + enter. Type <b style="color:var(--blue)">undo</b> or use the undo button to step back.</p>
+
+    <button class="start-btn" onclick="closeIntro()">▶ start</button>
+  </div>
+</div>
 <div id="shell">
   <div id="navbar">
     <span class="brand">push_swap</span>
@@ -180,9 +235,9 @@
     </div>
     <div id="new-row">
       <span class="ops-label">ops: <span id="op-count2">0</span></span>
-      <button class="new-btn" ontouchstart="" onclick="newGame(5)">new 5</button>
-      <button class="new-btn" ontouchstart="" onclick="newGame(7)">new 7</button>
-      <button class="new-btn" ontouchstart="" onclick="newGame(10)">new 10</button>
+      <button class="new-btn" id="btn-practice" ontouchstart="" onclick="newGame(5)">practice</button>
+      <button class="new-btn" id="btn-play" ontouchstart="" onclick="newGame(7)">play</button>
+      <button class="new-btn locked" id="btn-lvl2" ontouchstart="" onclick="newGame(10)">lvl 2 🔒</button>
     </div>
   </div>
 </div>
@@ -192,6 +247,23 @@
    GAME STATE
 ───────────────────────────────────────────── */
 let A=[], B=[], opCount=0, history=[], won=false, lost=false;
+let level2Unlocked = false;
+let isPractice = false;  // true when playing 5-piece practice mode
+
+function closeIntro() {
+  document.getElementById('intro-overlay').style.display = 'none';
+  newGame(5); // start with practice
+}
+
+function unlockLevel2() {
+  if (level2Unlocked) return;
+  level2Unlocked = true;
+  const btn = document.getElementById('btn-lvl2');
+  btn.classList.remove('locked');
+  btn.textContent = 'lvl 2';
+  btn.classList.add('highlight');
+  setTimeout(() => btn.classList.remove('highlight'), 3000);
+}
 
 // Limits per puzzle size
 // Optimal solutions: 5≈12, 7≈20, 10≈35 — limits give ~60% headroom
@@ -524,6 +596,7 @@ function newGame(n) {
     }
   } while (isSorted(v));
   currentN = n;
+  isPractice = (n === 5);
   const lim = LIMITS[n] || { ops: Math.round(n * 6), secs: n * 24 };
   opsLimit = lim.ops; timeLimit = lim.secs;
   A=[...v]; B=[]; opCount=0; history=[]; won=false; lost=false;
@@ -533,7 +606,12 @@ function newGame(n) {
   setOps(0); setStatus('');
   seqStep=0; seqBStep=0;
   render();
-  startTimer();
+  if (isPractice) {
+    stopTimer();
+    document.getElementById('ops-limit-badge').textContent = '';
+  } else {
+    startTimer();
+  }
   if (musicOn) startSequencer();
 }
 
@@ -577,7 +655,12 @@ function render() {
     const tm = Math.floor(timeUsed/60), ts = timeUsed%60;
     const timeStr = tm > 0 ? tm+'m '+ts+'s' : ts+'s';
     const pct = Math.round((opCount / opsLimit) * 100);
-    b.textContent = '\u2713 sorted! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 efficiency ' + (100-pct) + '%';
+    if (isPractice) {
+      b.textContent = '\u2713 sorted! ' + opCount + ' ops \u00b7 nice work \u2014 try play mode?';
+    } else {
+      b.textContent = '\u2713 sorted! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 efficiency ' + (100-pct) + '%';
+      if (currentN === 7) unlockLevel2();
+    }
     // triumphant win arpeggio from sorted stack after short delay
     setTimeout(() => {
       if (!musicOn) return;
@@ -617,7 +700,7 @@ function execOp(op) {
   beepOp(op);
   addLog(op, false); setStatus('');
   render();
-  if (!won && opCount >= opsLimit) triggerLose('ops limit reached');
+  if (!won && !isPractice && opCount >= opsLimit) triggerLose('ops limit reached');
 }
 
 function undoOp() {
