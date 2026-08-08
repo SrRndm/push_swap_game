@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>push_swap</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&display=swap');
     *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
     :root {
-      --bg:      #0e1117; --surface: #161b22; --border: #30363d;
+      --bg:      #000000; --surface: #0a0a0a; --border: #2a2a2a;
       --muted:   #8b949e; --text: #e6edf3;
       --blue:    #58a6ff; --green: #3fb950; --red: #f85149;
     }
     html, body {
       background: var(--bg); color: var(--text);
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Orbitron', 'Courier New', monospace;
       height: 100%; overscroll-behavior: none;
     }
     #shell { display: flex; flex-direction: column; min-height: 100dvh;
@@ -23,26 +24,26 @@
     #navbar {
       display: flex; justify-content: space-between; align-items: center;
       padding: 10px 14px; border-bottom: 0.5px solid var(--border);
-      background: var(--bg); position: sticky; top: 0; z-index: 10; gap: 8px;
+      background: #000; position: sticky; top: 0; z-index: 10; gap: 8px;
     }
-    .brand { font-size: 16px; color: var(--blue); letter-spacing: 0.08em; flex-shrink: 0; }
+    .brand { font-size: 13px; color: var(--green); letter-spacing: 0.08em; flex-shrink: 0; }
     .nav-ops { font-size: 13px; color: var(--muted); flex-shrink: 0; }
     .nav-ops span { color: var(--text); font-weight: 600; }
     #music-btn {
-      font-family: 'Courier New', monospace; font-size: 11px;
+      font-family: 'Orbitron', 'Courier New', monospace; font-size: 11px;
       padding: 4px 10px; border-radius: 6px; border: 0.5px solid var(--border);
       background: transparent; color: var(--muted); cursor: pointer;
       touch-action: manipulation; transition: background 0.1s, color 0.1s;
       flex-shrink: 0;
     }
-    #music-btn.on  { border-color: var(--green); color: var(--green); background: #0d2816; }
+    #music-btn.on  { border-color: #e07000; color: #e07000; background: #1a0f00; }
     #music-btn:active { transform: scale(0.95); }
 
     #body { flex: 1; overflow-y: auto; padding: 12px 12px 0; }
     #win-banner {
-      display: none; background: #0d2816; border: 0.5px solid #1a4a2a;
+      display: none; background: #1a0f00; border: 0.5px solid #e07000;
       border-radius: 8px; padding: 8px 12px; font-size: 13px;
-      color: var(--green); font-weight: 600; margin-bottom: 10px;
+      color: #e07000; font-weight: 600; margin-bottom: 10px;
     }
     #timer-row {
       display: block; margin-bottom: 10px;
@@ -54,12 +55,12 @@
     }
     #time-meter-fill {
       position: absolute; inset: 0 auto 0 0;
-      width: 100%; background: linear-gradient(90deg, #3fb950 0%, #58a6ff 100%);
+      width: 100%; background: linear-gradient(90deg, #e07000 0%, #58a6ff 100%);
       transition: width 0.24s ease, background 0.24s ease;
     }
     #time-meter-text {
       position: absolute; inset: 0; display: flex; align-items: center;
-      justify-content: center; font-size: 11px; font-weight: 600;
+      justify-content: center; font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
       color: var(--text); text-shadow: 0 0 8px rgba(0,0,0,0.55);
       pointer-events: none;
     }
@@ -67,31 +68,49 @@
 
     #stacks-row { display: flex; gap: 10px; margin-bottom: 12px; }
     .stack-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
-    .stack-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+    .stack-label { display: none; }
     .stack-well {
-      width: 100%; min-height: 200px; background: var(--surface);
-      border: 0.5px solid var(--border); border-radius: 8px;
+      width: 100%; min-height: 200px; background: #000;
+      border: 0.5px solid #333; border-radius: 8px;
       padding: 6px; display: flex; flex-direction: column;
       align-items: center; gap: 3px;
+      position: relative; overflow: visible;
     }
-    .empty-hint { font-size: 11px; color: #484f58; margin: auto; }
+    .well-letter {
+      position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+      font-size: 169px; font-weight: 900; line-height: 1;
+      color: rgba(255,255,255,0.054); pointer-events: none; user-select: none;
+      letter-spacing: -0.05em; z-index: 0;
+    }
+    .empty-hint { font-size: 11px; color: #484f58; margin: auto; z-index: 1; position: relative; }
     .bar {
+      position: relative; z-index: 1;
       border-radius: 4px; height: 26px; display: flex;
       align-items: center; justify-content: center;
       font-size: 12px; font-weight: 600; transition: width 0.12s ease;
+      /* piece border — contrasts with the texture inside */
+      border: 1.5px solid rgba(255,255,255,0.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 3px rgba(0,0,0,0.6);
     }
     .bar.is-top    { outline: 2px solid var(--blue); outline-offset: 1px; }
-    .bar.is-sorted { background: #1D9E75 !important; color: #E1F5EE !important; }
-    .bar.ping { outline: 2px solid #ffd700; outline-offset: 1px; }
+    .bar.is-sorted { background: repeating-linear-gradient(135deg,#e07000 0px,#e07000 6px,#00000000 6px,#00000000 10px) !important; color: #fff !important; outline: 2px solid #e07000; outline-offset:1px; }
+    .bar.ping { outline: 2px solid #e07000; outline-offset: 1px; }
 
-    .divider { border: none; border-top: 0.5px solid var(--border); margin: 0 0 10px; }
-    #log-area {
-      min-height: 36px; max-height: 36px; overflow: hidden;
-      display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; margin-bottom: 10px;
+    /* push slide animation — ── GLIDING PARAMETER: change duration below to taste ── */
+    @keyframes slideFromRight {
+      from { transform: translateX(80px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
     }
-    .chip       { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #21262d; color: var(--muted); border: 0.5px solid var(--border); }
-    .chip.fresh { background: #0d2744; color: var(--blue); border-color: #1f4b7a; }
-    .chip.err   { background: #2d0f0f; color: var(--red);  border-color: #5c1a1a; }
+    @keyframes slideFromLeft {
+      from { transform: translateX(-80px); opacity: 0; }
+      to   { transform: translateX(0);     opacity: 1; }
+    }
+    /* GLIDING PARAMETER — duration: how long the push slide takes (currently 0.55s) */
+    .bar.slide-from-right { animation: slideFromRight 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+    .bar.slide-from-left  { animation: slideFromLeft  0.55s cubic-bezier(0.16,1,0.3,1) both; }
+
+    /* op chips hidden — log-area removed */
+    .chip, .chip.fresh, .chip.err { display: none; }
 
     #terminal {
       display: flex; align-items: center; gap: 8px;
@@ -101,12 +120,12 @@
     #prompt { color: var(--green); font-size: 14px; white-space: nowrap; }
     #cmd-input {
       background: transparent; border: none; outline: none;
-      color: var(--text); font-family: 'Courier New', monospace;
+      color: var(--text); font-family: 'Orbitron', 'Courier New', monospace;
       font-size: 14px; flex: 1; min-width: 0; caret-color: var(--blue);
     }
 
     #bottom-panel {
-      position: sticky; bottom: 0; background: var(--bg);
+      position: sticky; bottom: 0; background: #000;
       border-top: 0.5px solid var(--border);
       padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     }
@@ -115,7 +134,7 @@
       gap: 7px; margin-bottom: 10px;
     }
     .op-btn {
-      font-family: 'Courier New', monospace; font-size: 16px; font-weight: 500;
+      font-family: 'Orbitron', 'Courier New', monospace; font-size: 13px; font-weight: 500;
       height: 46px; border-radius: 8px; background: #21262d; color: var(--muted);
       border: 0.5px solid var(--border); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -127,14 +146,13 @@
     .ops-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
     .ops-label span { color: var(--text); font-weight: 600; }
     .new-btn {
-      font-family: 'Courier New', monospace; font-size: 12px;
+      font-family: 'Orbitron', 'Courier New', monospace; font-size: 12px;
       height: 38px; padding: 0 13px; border-radius: 8px;
       background: transparent; color: var(--muted); border: 0.5px solid var(--border);
       cursor: pointer; touch-action: manipulation; transition: background 0.08s;
     }
     .new-btn:active { background: #21262d; color: var(--text); }
-    .new-btn.locked { opacity: 0.35; pointer-events: none; }
-    .new-btn.highlight { border-color: var(--green); color: var(--green); }
+    .new-btn.highlight { border-color: #e07000; color: #e07000; }
 
     /* ── Intro overlay ── */
     #intro-overlay {
@@ -155,13 +173,13 @@
     #intro-box .ops-table td { padding: 3px 6px; border: 0.5px solid var(--border); color: var(--muted); }
     #intro-box .ops-table td:first-child { color: var(--blue); font-weight: 600; }
     #intro-box .start-btn {
-      width: 100%; margin-top: 16px; font-family: 'Courier New', monospace;
+      width: 100%; margin-top: 16px; font-family: 'Orbitron', 'Courier New', monospace;
       font-size: 14px; font-weight: 600; padding: 12px;
-      border-radius: 8px; background: #0d2816; color: var(--green);
-      border: 0.5px solid var(--green); cursor: pointer; letter-spacing: 0.06em;
+      border-radius: 8px; background: #1a0f00; color: #e07000;
+      border: 0.5px solid #e07000; cursor: pointer; letter-spacing: 0.06em;
       transition: background 0.1s;
     }
-    #intro-box .start-btn:active { background: #143d22; }
+    #intro-box .start-btn:active { background: #2d1800; }
   </style>
 </head>
 <body>
@@ -183,7 +201,7 @@
 
     <h2>MODES</h2>
     <p><b style="color:var(--green)">Practice</b> — 5 pieces, no limits. Learn the ops freely.</p>
-    <p><b style="color:var(--blue)">Play</b> — 7 pieces, time &amp; move limits. Beat it to unlock Level 2 (10 pieces).</p>
+    <p><b style="color:var(--blue)">Play</b> — starts at Level 1 (7 pieces). Beat it to unlock Level 2 (10 pieces). Time &amp; move limits apply.</p>
 
     <h2>TIPS</h2>
     <p>Tap buttons or type ops + enter. Type <b style="color:var(--blue)">undo</b> or use the undo button to step back.</p>
@@ -209,11 +227,9 @@
     <div id="lose-banner" style="display:none;background:#2d0f0f;border:0.5px solid #5c1a1a;border-radius:8px;padding:8px 12px;font-size:13px;color:#f85149;font-weight:600;margin-bottom:10px;"></div>
     <div id="status-line"></div>
     <div id="stacks-row">
-      <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"></div></div>
-      <div class="stack-col"><div class="stack-label">B</div><div class="stack-well" id="well-b"></div></div>
+      <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"><span class="well-letter">A</span></div></div>
+      <div class="stack-col"><div class="stack-label">B</div><div class="stack-well" id="well-b"><span class="well-letter">B</span></div></div>
     </div>
-    <hr class="divider">
-    <div id="log-area"></div>
     <div id="terminal">
       <span id="prompt">$&gt;</span>
       <input id="cmd-input" type="text" autocomplete="off" autocorrect="off"
@@ -236,8 +252,7 @@
     <div id="new-row">
       <span class="ops-label">ops: <span id="op-count2">0</span></span>
       <button class="new-btn" id="btn-practice" ontouchstart="" onclick="newGame(5)">practice</button>
-      <button class="new-btn" id="btn-play" ontouchstart="" onclick="newGame(7)">play</button>
-      <button class="new-btn locked" id="btn-lvl2" ontouchstart="" onclick="newGame(10)">lvl 2 🔒</button>
+      <button class="new-btn" id="btn-play" ontouchstart="" onclick="startPlay()">play</button>
     </div>
   </div>
 </div>
@@ -248,19 +263,24 @@
 ───────────────────────────────────────────── */
 let A=[], B=[], opCount=0, history=[], won=false, lost=false;
 let level2Unlocked = false;
-let isPractice = false;  // true when playing 5-piece practice mode
+let isPractice = false;
+let currentLevel = 1; // 1 = play(7), 2 = play(10)
 
 function closeIntro() {
   document.getElementById('intro-overlay').style.display = 'none';
-  newGame(5); // start with practice
+  newGame(5);
+}
+
+function startPlay() {
+  // if level2 unlocked, play level 2; else play level 1
+  newGame(level2Unlocked ? 10 : 7);
 }
 
 function unlockLevel2() {
   if (level2Unlocked) return;
   level2Unlocked = true;
-  const btn = document.getElementById('btn-lvl2');
-  btn.classList.remove('locked');
-  btn.textContent = 'lvl 2';
+  const btn = document.getElementById('btn-play');
+  btn.textContent = 'play lvl 2';
   btn.classList.add('highlight');
   setTimeout(() => btn.classList.remove('highlight'), 3000);
 }
@@ -268,9 +288,9 @@ function unlockLevel2() {
 // Limits per puzzle size
 // Optimal solutions: 5≈12, 7≈20, 10≈35 — limits give ~60% headroom
 const LIMITS = {
-  5:  { ops: 17,  secs: 80 },
-  7:  { ops: 25,  secs: 90 },
-  10: { ops: 35,  secs: 100 },
+  5:  { ops: 17,  secs: 80  },
+  7:  { ops: 20,  secs: 113 },
+  10: { ops: 60,  secs: 300 },
 };
 let currentN = 5;
 let opsLimit  = LIMITS[5].ops;
@@ -340,10 +360,140 @@ function updateOpsDisplay() {
   badge.style.color = remaining <= 5 ? 'var(--red)' : remaining <= 10 ? '#ffd700' : 'var(--muted)';
 }
 
-const BAR_COLORS=[
-  ['#7F77DD','#EEEDFE'],['#1D9E75','#E1F5EE'],['#D85A30','#FAECE7'],
-  ['#378ADD','#E6F1FB'],['#BA7517','#FAEEDA'],['#D4537E','#FBEAF0'],
-  ['#639922','#EAF3DE'],['#888780','#F1EFE8'],
+// ─── Piece textures ───────────────────────────────────────────────────────
+// Pieces 1-8: original flat colours (BAR_COLORS)
+// Piece 9:    polka dots — black bg, white dots
+// Piece 10:   polka dots — white bg, black dots
+// Dots are fully inset (r=3, centres at r+margin from edges) — never clipped.
+// Honeycomb offset: row B shifted right by half the column spacing.
+
+function makeSVGUrl(svg) {
+  return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+}
+
+// Safe polka tile: 26×22px, 3 dots per row, r=3, fully inset
+// Row A centres: y=6,  x = 6, 16, 26(wrapped→ partial handled by repeat)
+// Row B centres: y=16, x = 11, 21  (shifted +5 = half of 10px col spacing)
+// All circle edges clear the tile boundaries by at least 1px (centre - r >= 3)
+function makePolka(bg, dot) {
+  return makeSVGUrl(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="22">' +
+    '<rect width="20" height="22" fill="' + bg + '"/>' +
+    '<circle cx="4"  cy="5.5"  r="3" fill="' + dot + '"/>' +
+    '<circle cx="14" cy="5.5"  r="3" fill="' + dot + '"/>' +
+    '<circle cx="9"  cy="16.5" r="3" fill="' + dot + '"/>' +
+    '<circle cx="19" cy="16.5" r="3" fill="' + dot + '"/>' +
+    '<circle cx="-1" cy="16.5" r="3" fill="' + dot + '"/>' +
+    '</svg>'
+  );
+}
+
+function makeStripes(c1, c2, angle) {
+  // diagonal stripes tile 12x12
+  const w = 12, h = 12;
+  if (angle === 45) {
+    return makeSVGUrl(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+      '<rect width="' + w + '" height="' + h + '" fill="' + c1 + '"/>' +
+      '<line x1="-2" y1="2"  x2="2"  y2="-2" stroke="' + c2 + '" stroke-width="4"/>' +
+      '<line x1="2"  y1="14" x2="14" y2="2"  stroke="' + c2 + '" stroke-width="4"/>' +
+      '<line x1="10" y1="14" x2="14" y2="10" stroke="' + c2 + '" stroke-width="4"/>' +
+      '</svg>'
+    );
+  }
+  // horizontal stripes
+  return makeSVGUrl(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">' +
+    '<rect width="8" height="4" fill="' + c1 + '"/>' +
+    '<rect y="4" width="8" height="4" fill="' + c2 + '"/>' +
+    '</svg>'
+  );
+}
+
+function makeTetris(bg, fg) {
+  // pixel-art tetromino-style block: 2x2 bright squares on dark bg, 16x16 tile
+  return makeSVGUrl(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
+    '<rect width="16" height="16" fill="' + bg + '"/>' +
+    // top-left block
+    '<rect x="1" y="1" width="6" height="6" fill="' + fg + '" rx="1"/>' +
+    '<rect x="2" y="2" width="2" height="2" fill="white" opacity="0.35"/>' +
+    // bottom-right block
+    '<rect x="9" y="9" width="6" height="6" fill="' + fg + '" rx="1"/>' +
+    '<rect x="10" y="10" width="2" height="2" fill="white" opacity="0.35"/>' +
+    // accent dots
+    '<rect x="9" y="1" width="3" height="3" fill="' + fg + '" opacity="0.5" rx="0.5"/>' +
+    '<rect x="1" y="9" width="3" height="3" fill="' + fg + '" opacity="0.5" rx="0.5"/>' +
+    '</svg>'
+  );
+}
+
+function makeMario(bg, fg) {
+  // classic NES-palette brick tile: mortar lines on coloured bricks, 16x16
+  return makeSVGUrl(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
+    '<rect width="16" height="16" fill="' + fg + '"/>' +
+    // mortar horizontal
+    '<rect y="7"  width="16" height="2" fill="' + bg + '"/>' +
+    // mortar vertical row A (offset 0)
+    '<rect x="7"  y="0" width="2" height="7"  fill="' + bg + '"/>' +
+    // mortar vertical row B (offset 8)
+    '<rect x="3"  y="9" width="2" height="7"  fill="' + bg + '"/>' +
+    '<rect x="11" y="9" width="2" height="7"  fill="' + bg + '"/>' +
+    // highlight top-left of each brick
+    '<rect x="1"  y="1"  width="4" height="1" fill="white" opacity="0.25"/>' +
+    '<rect x="9"  y="1"  width="5" height="1" fill="white" opacity="0.25"/>' +
+    '<rect x="1"  y="10" width="1" height="4" fill="white" opacity="0.15"/>' +
+    '<rect x="5"  y="10" width="4" height="1" fill="white" opacity="0.25"/>' +
+    '<rect x="13" y="10" width="2" height="1" fill="white" opacity="0.25"/>' +
+    '</svg>'
+  );
+}
+
+function makeRusty(bg, rust) {
+  // corroded metal: irregular rust patches over dark plate, 18x18 tile
+  return makeSVGUrl(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18">' +
+    '<rect width="18" height="18" fill="' + bg + '"/>' +
+    // rivet
+    '<circle cx="3"  cy="3"  r="2"   fill="#555" stroke="#333" stroke-width="0.5"/>' +
+    '<circle cx="3"  cy="3"  r="0.8" fill="#888"/>' +
+    '<circle cx="15" cy="15" r="2"   fill="#555" stroke="#333" stroke-width="0.5"/>' +
+    '<circle cx="15" cy="15" r="0.8" fill="#888"/>' +
+    // rust splotch 1
+    '<ellipse cx="10" cy="6"  rx="4" ry="2.5" fill="' + rust + '" opacity="0.75"/>' +
+    // rust splotch 2
+    '<ellipse cx="5"  cy="13" rx="3" ry="2"   fill="' + rust + '" opacity="0.6"/>' +
+    // scratch lines
+    '<line x1="8"  y1="2"  x2="14" y2="8"  stroke="#222" stroke-width="0.6" opacity="0.7"/>' +
+    '<line x1="2"  y1="10" x2="7"  y2="16" stroke="#222" stroke-width="0.4" opacity="0.5"/>' +
+    // sheen
+    '<rect x="0" y="0" width="18" height="4" fill="white" opacity="0.04"/>' +
+    '</svg>'
+  );
+}
+
+const PIECE_TEXTURES = [
+  // 1 — diagonal stripes: orange / black (hazard)
+  { bg: makeStripes('#e07000', '#111', 45),    labelBg: '#111',    labelFg: '#e07000', tile: '12px 12px', borderCol: '#fff' },
+  // 2 — diagonal stripes: white / black
+  { bg: makeStripes('#f0f0f0', '#111', 45),    labelBg: '#111',    labelFg: '#f0f0f0', tile: '12px 12px', borderCol: '#e07000' },
+  // 3 — tetris: black bg + blue blocks
+  { bg: makeTetris('#0a0a0a', '#58a6ff'),       labelBg: '#58a6ff', labelFg: '#0a0a0a', tile: '16px 16px', borderCol: '#e07000' },
+  // 4 — polka: white bg, black dots
+  { bg: makePolka('#f0f0f0', '#111'),           labelBg: '#111',    labelFg: '#f0f0f0', tile: '20px 22px', borderCol: '#222' },
+  // 5 — polka: black bg, white dots
+  { bg: makePolka('#111', '#f0f0f0'),           labelBg: '#f0f0f0', labelFg: '#111',    tile: '20px 22px', borderCol: '#ddd' },
+  // 6 — mario brick: dark grey mortar, orange brick
+  { bg: makeMario('#222', '#e07000'),           labelBg: '#e07000', labelFg: '#fff',    tile: '16px 16px', borderCol: '#111' },
+  // 7 — mario brick: black mortar, grey brick
+  { bg: makeMario('#111', '#666'),              labelBg: '#555',    labelFg: '#fff',    tile: '16px 16px', borderCol: '#e07000' },
+  // 8 — diagonal stripes: grey / black
+  { bg: makeStripes('#666', '#111', 45),        labelBg: '#111',    labelFg: '#ccc',    tile: '12px 12px', borderCol: '#fff' },
+  // 9 — polka: dark grey bg, orange dots
+  { bg: makePolka('#1a1a1a', '#e07000'),        labelBg: '#e07000', labelFg: '#111',    tile: '20px 22px', borderCol: '#58a6ff' },
+  // 10 — polka: black bg, blue dots
+  { bg: makePolka('#0a0a0a', '#58a6ff'),        labelBg: '#58a6ff', labelFg: '#0a0a0a', tile: '20px 22px', borderCol: '#e07000' },
 ];
 
 /* ─────────────────────────────────────────────
@@ -579,12 +729,13 @@ function setStatus(m, e) {
 }
 function addLog(op, e) {
   const area = document.getElementById('log-area');
+  if (!area) return; // log-area removed from UI
   const old = area.querySelector('.fresh');
   if (old) old.classList.remove('fresh');
-  const c = document.createElement('span');
-  c.className = 'chip' + (e ? ' err' : ' fresh');
-  c.textContent = op;
-  area.appendChild(c);
+  const ch = document.createElement('span');
+  ch.className = 'chip' + (e ? ' err' : ' fresh');
+  ch.textContent = op;
+  area.appendChild(ch);
 }
 
 function newGame(n) {
@@ -602,14 +753,16 @@ function newGame(n) {
   A=[...v]; B=[]; opCount=0; history=[]; won=false; lost=false;
   document.getElementById('win-banner').style.display = 'none';
   document.getElementById('lose-banner').style.display = 'none';
-  document.getElementById('log-area').innerHTML = '';
+  const _la = document.getElementById('log-area'); if (_la) _la.innerHTML = '';
   setOps(0); setStatus('');
   seqStep=0; seqBStep=0;
   render();
   if (isPractice) {
     stopTimer();
     document.getElementById('ops-limit-badge').textContent = '';
+    document.getElementById('timer-row').style.display = 'none';
   } else {
+    document.getElementById('timer-row').style.display = '';
     startTimer();
   }
   if (musicOn) startSequencer();
@@ -617,7 +770,8 @@ function newGame(n) {
 
 function renderWell(id, stack, total, sorted) {
   const w = document.getElementById(id);
-  w.innerHTML = '';
+  // preserve the faded letter — only remove bar/hint children
+  Array.from(w.children).forEach(ch => { if (!ch.classList.contains('well-letter')) ch.remove(); });
   if (!stack.length) {
     const h = document.createElement('div');
     h.className = 'empty-hint'; h.textContent = 'empty';
@@ -627,12 +781,37 @@ function renderWell(id, stack, total, sorted) {
     const bar = document.createElement('div');
     const s = sorted && id === 'well-a';
     bar.className = 'bar' + (idx===0 ? ' is-top' : '') + (s ? ' is-sorted' : '');
+    const tex = PIECE_TEXTURES[(val-1) % PIECE_TEXTURES.length];
     if (!s) {
-      const [bg,fg] = BAR_COLORS[(val-1) % BAR_COLORS.length];
-      bar.style.background = bg; bar.style.color = fg;
+      bar.style.background = tex.bg;
+      bar.style.backgroundSize = tex.tile || '20px 22px';
+      // apply per-texture contrast border (overrides the default rgba border from CSS)
+      if (tex.borderCol) bar.style.borderColor = tex.borderCol;
     }
     bar.style.width = Math.round(22 + (val/total) * ((w.offsetWidth||140) - 32)) + 'px';
-    bar.textContent = val;
+    // number badge: circle using labelBg/labelFg
+    const lbl = document.createElement('span');
+    lbl.textContent = val;
+    lbl.style.cssText = [
+      'position:relative', 'z-index:1',
+      'display:inline-flex', 'align-items:center', 'justify-content:center',
+      'width:20px', 'height:20px', 'border-radius:50%',
+      'font-size:10px', 'font-weight:700', 'line-height:1',
+      'background:' + (s ? '#e07000' : tex.labelBg),
+      'color:'       + (s ? '#fff'    : tex.labelFg),
+      'box-shadow:0 1px 3px rgba(0,0,0,0.45)',
+      'flex-shrink:0',
+    ].join(';');
+    bar.appendChild(lbl);
+    // slide animation for pa / pb — top piece of destination well slides in
+    if (idx === 0 && _slideTarget) {
+      // pa → piece came from the right (B is on the right), slides from right into A
+      // pb → piece came from the left (A is on the left), slides from left into B
+      const cls = (id === 'well-a') ? 'slide-from-right' : 'slide-from-left';
+      bar.classList.add(cls);
+      // remove class after animation so it doesn't replay on future renders
+      bar.addEventListener('animationend', () => bar.classList.remove(cls), { once: true });
+    }
     w.appendChild(bar);
   });
 }
@@ -656,10 +835,12 @@ function render() {
     const timeStr = tm > 0 ? tm+'m '+ts+'s' : ts+'s';
     const pct = Math.round((opCount / opsLimit) * 100);
     if (isPractice) {
-      b.textContent = '\u2713 sorted! ' + opCount + ' ops \u00b7 nice work \u2014 try play mode?';
+      b.textContent = '\u2713 sorted in ' + opCount + ' ops \u2014 try play?';
+    } else if (currentN === 7) {
+      b.textContent = '\u2713 level 1 clear! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 ' + (100-pct) + '% eff';
+      unlockLevel2();
     } else {
-      b.textContent = '\u2713 sorted! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 efficiency ' + (100-pct) + '%';
-      if (currentN === 7) unlockLevel2();
+      b.textContent = '\u2713 level 2 clear! ' + opCount + '/' + opsLimit + ' ops \u00b7 ' + timeStr + ' \u00b7 ' + (100-pct) + '% eff';
     }
     // triumphant win arpeggio from sorted stack after short delay
     setTimeout(() => {
@@ -674,15 +855,18 @@ function render() {
   }
 }
 
+let _slideTarget = null; // 'a' or 'b' — which well's top piece slides in
+
 function execOp(op) {
   if (won || lost) return;
   const snap = {A:[...A], B:[...B]};
   let ok=true, msg='';
+  _slideTarget = null;
   if      (op==='sa') { if(A.length>=2){[A[0],A[1]]=[A[1],A[0]];}else{ok=false;msg='sa: need ≥2 in A';} }
   else if (op==='sb') { if(B.length>=2){[B[0],B[1]]=[B[1],B[0]];}else{ok=false;msg='sb: need ≥2 in B';} }
   else if (op==='ss') { if(A.length>=2)[A[0],A[1]]=[A[1],A[0]]; if(B.length>=2)[B[0],B[1]]=[B[1],B[0]]; }
-  else if (op==='pa') { if(B.length>0){A.unshift(B.shift());}else{ok=false;msg='pa: B is empty';} }
-  else if (op==='pb') { if(A.length>0){B.unshift(A.shift());}else{ok=false;msg='pb: A is empty';} }
+  else if (op==='pa') { if(B.length>0){A.unshift(B.shift()); _slideTarget='a';}else{ok=false;msg='pa: B is empty';} }
+  else if (op==='pb') { if(A.length>0){B.unshift(A.shift()); _slideTarget='b';}else{ok=false;msg='pb: A is empty';} }
   else if (op==='ra') { if(A.length>1){A.push(A.shift());}else{ok=false;msg='ra: need ≥2 in A';} }
   else if (op==='rb') { if(B.length>1){B.push(B.shift());}else{ok=false;msg='rb: need ≥2 in B';} }
   else if (op==='rr') { if(A.length>1)A.push(A.shift()); if(B.length>1)B.push(B.shift()); }
@@ -710,8 +894,8 @@ function undoOp() {
   won=false; lost=false;
   document.getElementById('win-banner').style.display='none';
   document.getElementById('lose-banner').style.display='none';
-  const chips = document.getElementById('log-area').querySelectorAll('.chip');
-  if (chips.length) chips[chips.length-1].remove();
+  const la = document.getElementById('log-area');
+  if (la) { const chips = la.querySelectorAll('.chip'); if (chips.length) chips[chips.length-1].remove(); }
   setStatus(''); render();
 }
 
@@ -729,7 +913,7 @@ document.getElementById('cmd-input').addEventListener('keydown', e => {
   }
   if (e.key==='ArrowUp') {
     e.preventDefault();
-    const chips=document.getElementById('log-area').querySelectorAll('.chip:not(.err)');
+    const la2=document.getElementById('log-area'); const chips=la2?la2.querySelectorAll('.chip:not(.err)'):[];
     if (chips.length) e.target.value=chips[chips.length-1].textContent;
   }
 });
