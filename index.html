@@ -70,11 +70,16 @@
     .stack-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
     .stack-label { display: none; }
     .stack-well {
-      width: 100%; min-height: 200px; background: #000;
+      width: 100%; min-height: 200px;
+      background: #000;
       border: 0.5px solid #333; border-radius: 8px;
       padding: 6px; display: flex; flex-direction: column;
       align-items: center; gap: 3px;
       position: relative; overflow: visible;
+    }
+    .well-grid {
+      position: absolute; inset: 0; border-radius: 8px;
+      pointer-events: none; z-index: 0; overflow: hidden;
     }
     .well-letter {
       position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
@@ -82,7 +87,7 @@
       color: rgba(255,255,255,0.054); pointer-events: none; user-select: none;
       letter-spacing: -0.05em; z-index: 0;
     }
-    .empty-hint { font-size: 11px; color: #484f58; margin: auto; z-index: 1; position: relative; }
+    .empty-hint { display: none; }
     .bar {
       position: relative; z-index: 1;
       border-radius: 4px; height: 26px; display: flex;
@@ -112,10 +117,21 @@
     /* op chips hidden — log-area removed */
     .chip, .chip.fresh, .chip.err { display: none; }
 
+    #op-history {
+      display: flex; flex-direction: column; gap: 2px;
+      margin-bottom: 6px; min-height: 52px;
+    }
+    .hist-line {
+      font-family: 'Orbitron', 'Courier New', monospace;
+      font-size: 10px; color: #444;
+      padding: 1px 4px; min-height: 16px; letter-spacing: 0.04em;
+    }
+    .hist-line.hist-latest { color: var(--green); }
+    .hist-line.hist-err    { color: var(--red); }
     #terminal {
       display: flex; align-items: center; gap: 8px;
       background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; width: 55%;
+      border-radius: 8px; padding: 9px 12px; margin-bottom: 10px;
     }
     #prompt { color: var(--green); font-size: 14px; white-space: nowrap; }
     #cmd-input {
@@ -131,17 +147,42 @@
     }
     #hint-grid {
       display: grid; grid-template-columns: repeat(5, 1fr);
-      gap: 7px; margin-bottom: 10px;
+      gap: 6px; margin-bottom: 10px;
     }
     .op-btn {
-      font-family: 'Orbitron', 'Courier New', monospace; font-size: 13px; font-weight: 500;
-      height: 46px; border-radius: 8px; background: #21262d; color: var(--muted);
-      border: 0.5px solid var(--border); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      height: 58px; border-radius: 8px; background: #0d0d0d; color: #555;
+      border: 0.5px solid #252525; cursor: pointer;
+      position: relative; overflow: hidden;
+      padding: 0;
       -webkit-user-select: none; user-select: none; touch-action: manipulation;
       transition: background 0.08s, transform 0.08s;
     }
-    .op-btn:active { background: #2d333b; color: var(--text); transform: scale(0.93); }
+    .btn-label {
+      position: absolute; top: 8px; left: 9px;
+      font-family: 'Orbitron', monospace; font-size: 10.5px; font-weight: 300;
+      letter-spacing: 0.04em; opacity: 0.4; line-height: 1;
+      color: #888;   /* always grey, not accent colour */
+    }
+    .btn-icon {
+      position: absolute; bottom: 8px; right: 9px;
+      font-size: 31px; line-height: 1; font-weight: 900;
+      display: flex; align-items: flex-end; justify-content: flex-end;
+    }
+    .btn-icon.icon-dual {
+      font-size: 22px; letter-spacing: -2px; gap: 0px;
+    }
+    /* push arrows slightly larger icon */
+    .btn-pb .btn-icon, .btn-pa .btn-icon { font-size: 38px; }
+    /* A-group (blue): sa, pb, ra, rra */
+    .btn-sa, .btn-pb, .btn-ra, .btn-rra { border-color: #1a3050; color: #58a6ff; }
+    /* B-group (orange): sb, pa, rb, rrb */
+    .btn-sb, .btn-pa, .btn-rb, .btn-rrb { border-color: #3d2000; color: #e07000; }
+    /* push arrows: larger */
+    .btn-pb { border-color: #2a5a9f; }
+    .btn-pa { color: #ff8c00; border-color: #6d3800; }
+    /* combined centre */
+    .btn-ss, .btn-rr { color: #777; border-color: #333; }
+    .op-btn:active { background: #1a1a1a; transform: scale(0.91); }
     #new-row { display: flex; gap: 8px; align-items: center; }
     .ops-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
     .ops-label span { color: var(--text); font-weight: 600; }
@@ -227,27 +268,34 @@
     <div id="lose-banner" style="display:none;background:#2d0f0f;border:0.5px solid #5c1a1a;border-radius:8px;padding:8px 12px;font-size:13px;color:#f85149;font-weight:600;margin-bottom:10px;"></div>
     <div id="status-line"></div>
     <div id="stacks-row">
-      <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"><span class="well-letter">A</span></div></div>
-      <div class="stack-col"><div class="stack-label">B</div><div class="stack-well" id="well-b"><span class="well-letter">B</span></div></div>
+      <div class="stack-col"><div class="stack-label">A</div><div class="stack-well" id="well-a"><canvas class="well-grid" id="grid-a"></canvas><span class="well-letter">A</span></div></div>
+      <div class="stack-col"><div class="stack-label">B</div><div class="stack-well" id="well-b"><canvas class="well-grid" id="grid-b"></canvas><span class="well-letter">B</span></div></div>
+    </div>
+  </div>
+  <div id="bottom-panel">
+    <div id="op-history">
+      <div class="hist-line" id="hist-2"></div>
+      <div class="hist-line" id="hist-1"></div>
+      <div class="hist-line" id="hist-0"></div>
     </div>
     <div id="terminal">
       <span id="prompt">$&gt;</span>
       <input id="cmd-input" type="text" autocomplete="off" autocorrect="off"
-        autocapitalize="none" spellcheck="false" placeholder="op + enter" inputmode="text">
+        autocapitalize="none" spellcheck="false" placeholder="type op + enter" inputmode="text">
     </div>
-  </div>
-  <div id="bottom-panel">
     <div id="hint-grid">
-      <div class="op-btn" ontouchstart="" onclick="tapOp('sa')">sa</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('sb')">sb</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('ss')">ss</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('pa')">pa</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('pb')">pb</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('ra')">ra</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('rb')">rb</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('rr')">rr</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('rra')">rra</div>
-      <div class="op-btn" ontouchstart="" onclick="tapOp('rrb')">rrb</div>
+      <!-- Row 1: sa | pb | ss | pa | sb -->
+      <div class="op-btn btn-sa"  ontouchstart="" onclick="tapOp('sa')"  title="sa"><span class="btn-label">sa</span><span class="btn-icon icon-dual">&#8593;&#8595;</span></div>
+      <div class="op-btn btn-pb"  ontouchstart="" onclick="tapOp('pb')"  title="pb"><span class="btn-label">pb</span><span class="btn-icon">&#8594;</span></div>
+      <div class="op-btn btn-ss"  ontouchstart="" onclick="tapOp('ss')"  title="ss"><span class="btn-label">ss</span><span class="btn-icon icon-dual">&#8597;&#8597;</span></div>
+      <div class="op-btn btn-pa"  ontouchstart="" onclick="tapOp('pa')"  title="pa"><span class="btn-label">pa</span><span class="btn-icon">&#8592;</span></div>
+      <div class="op-btn btn-sb"  ontouchstart="" onclick="tapOp('sb')"  title="sb"><span class="btn-label">sb</span><span class="btn-icon icon-dual">&#8593;&#8595;</span></div>
+      <!-- Row 2: ra | rra | rr | rrb | rb -->
+      <div class="op-btn btn-ra"  ontouchstart="" onclick="tapOp('ra')"  title="ra"><span class="btn-label">ra</span><span class="btn-icon">&#8593;</span></div>
+      <div class="op-btn btn-rra" ontouchstart="" onclick="tapOp('rra')" title="rra"><span class="btn-label">rra</span><span class="btn-icon">&#8595;</span></div>
+      <div class="op-btn btn-rr"  ontouchstart="" onclick="tapOp('rr')"  title="rr"><span class="btn-label">rr</span><span class="btn-icon icon-dual">&#8593;&#8593;</span></div>
+      <div class="op-btn btn-rrb" ontouchstart="" onclick="tapOp('rrb')" title="rrb"><span class="btn-label">rrb</span><span class="btn-icon">&#8595;</span></div>
+      <div class="op-btn btn-rb"  ontouchstart="" onclick="tapOp('rb')"  title="rb"><span class="btn-label">rb</span><span class="btn-icon">&#8593;</span></div>
     </div>
     <div id="new-row">
       <span class="ops-label">ops: <span id="op-count2">0</span></span>
@@ -262,6 +310,58 @@
    GAME STATE
 ───────────────────────────────────────────── */
 let A=[], B=[], opCount=0, history=[], won=false, lost=false;
+
+/* ── Perspective grid drawn on each well's canvas ─────────────────────────
+   Mimics the classic 80s wireframe "tunnel" look: lines converge to a
+   vanishing point at the centre of the canvas.
+   cols/rows: number of grid divisions; lineColor: rgba string.          */
+function drawPerspGrid(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const well = canvas.parentElement;
+  const W = well.offsetWidth  || 160;
+  const H = well.offsetHeight || 220;
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const cols   = 6;   // vertical divisions
+  const rows   = 7;   // horizontal divisions
+  const vx     = W / 2;              // vanishing point x (centre)
+  const vy     = H * 0.48;           // vanishing point y (slightly above mid)
+  const stroke = 'rgba(0,255,80,0.13)'; // green tint, very faint
+
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth   = 0.7;
+
+  // vertical converging lines (left edge → VP, right edge → VP)
+  for (let i = 0; i <= cols; i++) {
+    const xBot = (i / cols) * W;   // position along bottom edge
+    ctx.beginPath();
+    ctx.moveTo(xBot, H);
+    ctx.lineTo(vx, vy);
+    ctx.stroke();
+  }
+
+  // horizontal lines — interpolate from bottom edge up to VP height
+  for (let j = 1; j <= rows; j++) {
+    const t  = j / (rows + 1);           // 0=bottom, 1=VP
+    const y  = H - t * (H - vy);         // y position
+    // x extent shrinks as we approach VP
+    const xL = vx  - (1 - t) * (W / 2);
+    const xR = vx  + (1 - t) * (W / 2);
+    ctx.beginPath();
+    ctx.moveTo(xL, y);
+    ctx.lineTo(xR, y);
+    ctx.stroke();
+  }
+}
+
+function drawAllGrids() {
+  drawPerspGrid('grid-a');
+  drawPerspGrid('grid-b');
+}
 let level2Unlocked = false;
 let isPractice = false;
 let currentLevel = 1; // 1 = play(7), 2 = play(10)
@@ -727,6 +827,26 @@ function setStatus(m, e) {
   el.textContent = m;
   el.style.color = e ? '#f85149' : '#8b949e';
 }
+// ── rolling 3-line terminal history ──────────────────────────────────────
+const _histBuf = []; // [{text,isErr}] newest last
+
+function pushHistory(text, isErr) {
+  _histBuf.push({ text, isErr });
+  if (_histBuf.length > 3) _histBuf.shift();
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById('hist-' + i);
+    if (!el) continue;
+    const entry = _histBuf[_histBuf.length - 1 - i];
+    if (entry) {
+      el.textContent = (i === 0 ? '$> ' : '    ') + entry.text;
+      el.className = 'hist-line' + (i === 0 ? (entry.isErr ? ' hist-err' : ' hist-latest') : '');
+    } else {
+      el.textContent = '';
+      el.className = 'hist-line';
+    }
+  }
+}
+
 function addLog(op, e) {
   const area = document.getElementById('log-area');
   if (!area) return; // log-area removed from UI
@@ -754,9 +874,11 @@ function newGame(n) {
   document.getElementById('win-banner').style.display = 'none';
   document.getElementById('lose-banner').style.display = 'none';
   const _la = document.getElementById('log-area'); if (_la) _la.innerHTML = '';
+  _histBuf.length = 0; ['hist-0','hist-1','hist-2'].forEach(id => { const e=document.getElementById(id); if(e){e.textContent='';e.className='hist-line';} });
   setOps(0); setStatus('');
   seqStep=0; seqBStep=0;
   render();
+  drawAllGrids();
   if (isPractice) {
     stopTimer();
     document.getElementById('ops-limit-badge').textContent = '';
@@ -876,13 +998,13 @@ function execOp(op) {
 
   if (!ok) {
     beepError(); vibe(80);
-    addLog(op, true); setStatus(msg, true);
+    addLog(op, true); pushHistory('✗ ' + op + (msg ? '  ' + msg : ''), true); setStatus(msg, true);
     return;
   }
   history.push(snap);
   opCount++;
   beepOp(op);
-  addLog(op, false); setStatus('');
+  addLog(op, false); pushHistory(op, false); setStatus('');
   render();
   if (!won && !isPractice && opCount >= opsLimit) triggerLose('ops limit reached');
 }
@@ -900,6 +1022,9 @@ function undoOp() {
 }
 
 function tapOp(op) { execOp(op); }
+
+window.addEventListener('resize', drawAllGrids);
+// Initial draw triggered via first newGame call in closeIntro()
 
 document.getElementById('cmd-input').addEventListener('keydown', e => {
   if (e.key==='Enter') {
